@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags poppler-glib`
+CFLAGS = -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags poppler-glib` -fopenmp -o3
 LIBS = `pkg-config --libs poppler-glib` -lm
 
 all: pdf_search_file

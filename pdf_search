@@ -16,5 +16,5 @@ search_method_all_occurrences=2   # 2 - All occurrences
 # Search for PDF files in the current directory
 for file in "$directory_path"/*.pdf; do
     # Search method: 1 - First occurrence, 2 - All occurrences
-    pdf_search_file "$file" "$1" $search_method_first_occurrence
+    pdf_search_file "$file" "$1" 2
 done
