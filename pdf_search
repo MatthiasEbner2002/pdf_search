@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo "Error: String parameter is required and cannot be empty."
+  echo "Usage: ./pdf_search <parameter>"
+  exit 1
+fi
+
+# Get the current directory path
+directory_path=$(pwd)
+
+# Print the directory path
+#echo "Searching PDF files in directory: $directory_path"
+
+# Search for PDF files in the current directory
+for file in "$directory_path"/*.pdf; do
+    # Search method: 1 - First occurrence, 2 - All occurrences
+    pdf_search_file "$file" "$1" 1
+done
