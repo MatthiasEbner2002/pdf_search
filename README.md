@@ -15,3 +15,10 @@ So i can change the files if I want and dont have to change the links.
 
 
 TODO: make it possible to have a strict search (case sensitive)
+
+## Usage
+
+    pdf_search <text to search for>
+
+### example:
+    pdf_search adequate

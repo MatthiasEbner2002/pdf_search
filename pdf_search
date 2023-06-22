@@ -9,11 +9,12 @@ fi
 # Get the current directory path
 directory_path=$(pwd)
 
-# Print the directory path
-#echo "Searching PDF files in directory: $directory_path"
 
+#echo "Searching PDF files in directory: $directory_path" # Print the directory path
+search_method_first_occurrence=1  # 1 - First occurrence
+search_method_all_occurrences=2   # 2 - All occurrences
 # Search for PDF files in the current directory
 for file in "$directory_path"/*.pdf; do
     # Search method: 1 - First occurrence, 2 - All occurrences
-    pdf_search_file "$file" "$1" 1
+    pdf_search_file "$file" "$1" $search_method_first_occurrence
 done
