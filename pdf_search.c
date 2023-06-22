@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <pdf_path> <word_to_search> \n", argv[0]);
+        fprintf(stderr, "Usage: %s <word_to_search> \n", argv[0]);
         return 1;
     }
 
