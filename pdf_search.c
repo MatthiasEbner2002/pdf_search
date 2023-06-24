@@ -261,16 +261,15 @@ int main(int argc, char *argv[]) {
     ///////////////////////////////////
     // Open the PDF file with okular //
     ///////////////////////////////////
-    char pdf_path[strlen(ret->pdf_path) + 1];  // Create a copy of the path string
-    strcpy(pdf_path, ret->pdf_path);
+    char command[200];
+    sprintf(command, "okular %s --find=%s --page=%d &",ret->pdf_path, word_to_search, ret->first_page_with_occurence);
     
-    // Create a string for the first page number
-    char first_page_str[16];
-    snprintf(first_page_str, sizeof(first_page_str), "%d", ret->first_page_with_occurence);
+    int result = system(command);
+    if (result == -1) {
+        perror("Error executing command");
+    };
 
-    const char* command = "okular"; // Command to execute
-    char* const command_args[] = {"okular", pdf_path, "--find", (char*)word_to_search,
-                                    "--page", first_page_str, NULL}; // Arguments to pass to the command
+    printf("Executing command: %s\n", command);
 
     free(ret);
 
@@ -279,12 +278,7 @@ int main(int argc, char *argv[]) {
     }
     free(pdfPaths);
 
-    // Execute the command, replacing the current process
-    execvp(command, command_args);
-
-    // The following code will only execute if the execvp function fails
-    perror("Command execution failed");
-    return 1;
+    return 0;
 
 
 
