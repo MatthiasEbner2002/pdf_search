@@ -4,6 +4,7 @@ Dont move the files into a other location, there is a softlink to these files, i
 So i can change the files if I want and dont have to change the links. 
 
 ### Command to make a link:
+INFO: change /usr/local/bin/pdf_search to change the command, that you what to use (delete old ones) 
 
     sudo ln -s "$(pwd)/pdf_search" /usr/local/bin/pdf_search
 
