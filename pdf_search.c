@@ -264,12 +264,13 @@ int main(int argc, char *argv[]) {
     char command[200];
     sprintf(command, "okular %s --find=%s --page=%d &",ret->pdf_path, word_to_search, ret->first_page_with_occurence);
     
+    printf("Executing command: '%s'\n", command);
+    
     int result = system(command);
     if (result == -1) {
         perror("Error executing command");
     };
 
-    printf("Executing command: %s\n", command);
 
     free(ret);
 
