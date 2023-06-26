@@ -182,6 +182,43 @@ char** listPDFFiles(const char* folderPath, int* count) {
     }
 }
 
+
+char* replaceCharacter(const char *str, char oldChar, const char *newStr) {
+    int length = strlen(str);
+    int newLength = strlen(newStr);
+    int count = 0;
+    int i;
+
+    // Count the number of occurrences of the old character
+    for (i = 0; i < length; i++) {
+        if (str[i] == oldChar) {
+            count++;
+        }
+    }
+
+    // Calculate the final length of the string after replacements
+    int finalLength = length + (newLength - 1) * count;
+
+    // Allocate memory for the new string
+    char *newString = (char*)malloc((finalLength + 1) * sizeof(char));
+
+    // Perform the character replacements
+    int j = 0;
+    for (i = 0; i < length; i++) {
+        if (str[i] == oldChar) {
+            // Copy the new string into the new string buffer
+            strcpy(&newString[j], newStr);
+            j += newLength;
+        } else {
+            // Copy the original character
+            newString[j++] = str[i];
+        }
+    }
+    newString[j] = '\0'; // Add the null terminator
+
+    return newString;
+}
+
 int main(int argc, char *argv[]) {
 
     char cwd[1024]; // Buffer to store the path
@@ -261,8 +298,11 @@ int main(int argc, char *argv[]) {
     ///////////////////////////////////
     // Open the PDF file with okular //
     ///////////////////////////////////
+
+    char *newString = replaceCharacter(ret->pdf_path, ' ', "\ ");
+
     char command[200];
-    sprintf(command, "okular \"%s\" --find=%s --page=%d &",ret->pdf_path, word_to_search, ret->first_page_with_occurence);
+    sprintf(command, "okular \"%s\" --find=%s --page=%d &", newString, word_to_search, ret->first_page_with_occurence);
     
     printf("Executing command: '%s'\n", command);
     
