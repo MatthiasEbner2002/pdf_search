@@ -58,19 +58,25 @@ Result* search_in_pdf(const char *pdf_path, const char *word) {
     #pragma omp parallel for private(i) shared(num_matches) // num_threads(8)
     for (i = 0; i < num_pages; i++) {
         PopplerPage *page = poppler_document_get_page(doc, i);
+
         gchar *text = poppler_page_get_text(page);
-        gchar *lowercase_text = g_ascii_strdown(text, -1);
-        gchar *lowercase_word = g_ascii_strdown(word, -1);
-        gboolean local_match_found = FALSE;
+        gchar *word = parameters->word_to_search;
+
+        if (parameters->sensitive_search == false) {
+            text = g_ascii_strdown(text, -1);
+            word = g_ascii_strdown(parameters->word_to_search, -1);
+        }
+
+        gboolean local_match_found = false;
         int local_num_occurences = 0;
 
         // search for all occurences of the word in the page
-        while(strstr(lowercase_text, lowercase_word) != NULL) {
-            if(local_match_found == FALSE){
-                local_match_found = TRUE;
+        while(strstr(text, word) != NULL) {
+            if(local_match_found == false){
+                local_match_found = true;
             }
             local_num_occurences++;
-            lowercase_text = g_strdup(strstr(lowercase_text, lowercase_word) + strlen(lowercase_word));
+            text = g_strdup(strstr(text, word) + strlen(word));
         }
 
 
@@ -83,15 +89,12 @@ Result* search_in_pdf(const char *pdf_path, const char *word) {
                 }
 
                 matches[num_matches].page_number = i + 1;
-                matches[num_matches].match_found = TRUE;
+                matches[num_matches].match_found = true;
                 matches[num_matches].num_occurences = local_num_occurences;
                 num_matches++;
             }
         }
 
-        g_free(lowercase_word);
-        g_free(lowercase_text);
-        g_free(text);
         g_object_unref(page);
     }
 
