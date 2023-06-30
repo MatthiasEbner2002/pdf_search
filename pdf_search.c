@@ -6,6 +6,15 @@
 #include <omp.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <sys/stat.h>
+
+typedef struct {
+    char* word_to_search;
+    bool sensitive_search;
+    bool recursive_search;
+} Parameters;
+
 
 typedef struct {
     const char *pdf_path;
@@ -20,7 +29,10 @@ typedef struct {
     int num_occurences;
 } PageData;
 
-
+/*
+ * Compares two PageData structs by page number
+ * Returns a negativ if page_number of a is smaller than page_number of b
+*/
 int compare_page_data(const void *a, const void *b) {
     const PageData *data_a = (const PageData *)a;
     const PageData *data_b = (const PageData *)b;
@@ -28,7 +40,7 @@ int compare_page_data(const void *a, const void *b) {
     return data_a->page_number - data_b->page_number;
 }
 
-Result* search_in_pdf(const char *pdf_path, const char *word) {
+Result* searchInPdf(const char *pdf_path, Parameters *parameters) {
     PopplerDocument *doc;
     GError *error = NULL;
     int i, num_pages;
@@ -60,7 +72,7 @@ Result* search_in_pdf(const char *pdf_path, const char *word) {
         PopplerPage *page = poppler_document_get_page(doc, i);
         gchar *text = poppler_page_get_text(page);
         gchar *lowercase_text = g_ascii_strdown(text, -1);
-        gchar *lowercase_word = g_ascii_strdown(word, -1);
+        gchar *lowercase_word = g_ascii_strdown(parameters->word_to_search, -1);
         gboolean local_match_found = FALSE;
         int local_num_occurences = 0;
 
@@ -128,58 +140,75 @@ Result* search_in_pdf(const char *pdf_path, const char *word) {
     return result;
 }
 
+/*
+ * Compares two strings
+ * Returns a negative value if a is smaller than b
+ */
 int comparePaths(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
 }
 
 
-char** listPDFFiles(const char* folderPath, int* count) {
-    DIR *dir;
-    struct dirent *ent;
+// Function to check if a file has a .pdf extension
+int isPDFFile(const char* filename) {
+    const char* extension = strrchr(filename, '.');
+    if (extension != NULL && strcmp(extension, ".pdf") == 0) {
+        return 1;
+    }
+    return 0;
+}
 
-    // Open the directory
-    if ((dir = opendir(folderPath)) != NULL) {
-        // Count the number of PDF files
-        int pdfCount = 0;
+void searchPDFFilesRecursive(const char* folderPath, char*** pdfPaths, int* count, bool searchSubfolders) {
+    DIR* dir = opendir(folderPath);
+    if (dir != NULL) {
+        struct dirent* ent;
         while ((ent = readdir(dir)) != NULL) {
-            // Check if the file has a .pdf extension
-            if (strstr(ent->d_name, ".pdf") != NULL) {
-                pdfCount++;
-            }
-        }
-        
-        // Allocate memory for the array of paths
-        char** pdfPaths = (char**)malloc(pdfCount * sizeof(char*));
-        int index = 0;
-        rewinddir(dir);
-        
-        // Store the paths of PDF files in the array
-        while ((ent = readdir(dir)) != NULL) {
-            if (strstr(ent->d_name, ".pdf") != NULL) {
-                // Allocate memory for the path string
+            if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
+                // Create the complete file path
                 int pathLength = strlen(folderPath) + strlen(ent->d_name) + 2;
                 char* filePath = (char*)malloc(pathLength * sizeof(char));
-                
-                // Create the complete file path
                 snprintf(filePath, pathLength, "%s/%s", folderPath, ent->d_name);
-                
-                // Store the file path in the array
-                pdfPaths[index] = filePath;
-                index++;
+
+                struct stat st;
+                if (searchSubfolders && stat(filePath, &st) == 0 && S_ISDIR(st.st_mode)) {
+                    // Recursively search in subfolders
+                    searchPDFFilesRecursive(filePath, pdfPaths, count, searchSubfolders);
+                }
+
+                if (isPDFFile(ent->d_name)) {
+                    // Add the PDF file path to the array
+                    (*pdfPaths)[(*count)++] = filePath;
+                    *pdfPaths = (char**)realloc(*pdfPaths, (*count + 1) * sizeof(char*));
+                } else {
+                    free(filePath);  // Free memory if the file is not a PDF
+                }
             }
         }
-
         closedir(dir);
-        *count = pdfCount;
-         // Sort the paths alphabetically
-        qsort(pdfPaths, pdfCount, sizeof(char*), comparePaths);
-
-        return pdfPaths;
-    } else {
-        // Failed to open the directory
-        perror("Unable to open the directory");
-        exit(EXIT_FAILURE);
     }
+}
+
+char** listPDFFiles(const char* folderPath, int* count, bool searchSubfolders) {
+    // Allocate memory for the array of paths
+    char** pdfPaths = (char**)malloc(sizeof(char*));
+    *count = 0;
+
+    // Search for PDF files recursively
+    searchPDFFilesRecursive(folderPath, &pdfPaths, count, searchSubfolders);
+
+    // Sort the paths alphabetically
+    qsort(pdfPaths, *count, sizeof(char*), comparePaths);
+
+    return pdfPaths;
+}
+
+
+/*
+prints the usage of the program
+*/
+void print_usage_and_exit(char *argv[], int exit_code) {
+    printf("Usage: %s <word_to_search> [-s] [-r] [-h/--h]\n", argv[0]);
+    exit(exit_code);
 }
 
 
@@ -187,22 +216,50 @@ int main(int argc, char *argv[]) {
 
     char cwd[1024]; // Buffer to store the path
 
+    // Get the current working directory
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         perror("getcwd() error");
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <word_to_search> \n", argv[0]);
-        return 1;
+    if (argc < 2 || argc > 5) {
+        print_usage_and_exit(argv, EXIT_FAILURE);
+    }
+
+    Parameters param = { 
+        .word_to_search = NULL, 
+        .sensitive_search = false, 
+        .recursive_search = false
+    };
+
+    for( int i = 1; i < argc; i++ ) {
+        if( strcmp( argv[i], "-h" ) == 0 || strcmp( argv[i], "--help" ) == 0 ) {
+            print_usage_and_exit(argv, EXIT_SUCCESS);
+        }
+        else if (strcmp(argv[i], "-s") == 0){
+            param.sensitive_search = true;
+        }
+        else if (strcmp(argv[i], "-r") == 0){
+            param.recursive_search = true;
+        }
+        else if (param.word_to_search == NULL){
+            param.word_to_search = argv[i];
+        }
+        else{
+            print_usage_and_exit(argv, EXIT_FAILURE);
+        }
+    }
+
+    if(param.word_to_search == NULL){
+        printf("Error: no word to search\n");
+        print_usage_and_exit(argv, EXIT_FAILURE);
     }
 
     
     const char *word_to_search = argv[1];   // word to search
 
     int count;
-    char** pdfPaths = listPDFFiles(cwd, &count);
-
+    char** pdfPaths = listPDFFiles(cwd, &count, param.recursive_search);
 
     ///////////////////////////////////////
     // search here and print the results //
@@ -210,7 +267,7 @@ int main(int argc, char *argv[]) {
     Result *ret = NULL;
     // Print the paths to PDF files
     for (int i = 0; i < count; i++) {
-        Result *result = search_in_pdf(pdfPaths[i], word_to_search);
+        Result *result = searchInPdf(pdfPaths[i], &param);
         if (result != NULL && (ret == NULL || result->num_occurences > ret->num_occurences)) {
             // save the result if it has more occurences than the previous one
             if (ret != NULL) {
@@ -275,7 +332,9 @@ int main(int argc, char *argv[]) {
     };
 
 
-    free(ret);
+    if (ret != NULL) {
+        free(ret);
+    }
 
     for (int i = 0; i < count; i++) {
         free(pdfPaths[i]);
