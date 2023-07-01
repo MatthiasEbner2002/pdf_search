@@ -259,8 +259,6 @@ int main(int argc, char *argv[]) {
         print_usage_and_exit(argv, EXIT_FAILURE);
     }
 
-    
-    const char *word_to_search = argv[1];   // word to search
 
     int count;
     char** pdfPaths = listPDFFiles(cwd, &count, param.recursive_search);
@@ -326,7 +324,7 @@ int main(int argc, char *argv[]) {
 
 
     char command[200];
-    sprintf(command, "okular \"%s\" --find=\"%s\" --page=%d &", ret->pdf_path, word_to_search, ret->first_page_with_occurence);
+    sprintf(command, "okular \"%s\" --find=\"%s\" --page=%d &", ret->pdf_path, param.word_to_search, ret->first_page_with_occurence);
     
     printf("Executing command: '%s'\n", command);
     
