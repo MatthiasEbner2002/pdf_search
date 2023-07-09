@@ -9,6 +9,12 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 
+/*
+    Struct to store the parameters of the search
+    - word_to_search: The word to search for
+    - sensitive_search: If true, the search is case sensitive
+    - recursive_search: If true, the search is recursive in subfolders
+*/
 typedef struct {
     char* word_to_search;
     bool sensitive_search;
@@ -16,6 +22,12 @@ typedef struct {
 } Parameters;
 
 
+/*
+    Struct to store the result of the search
+    - pdf_path: The path of the pdf file
+    - num_occurences: The number of occurences of the word in the pdf file
+    - first_page_with_occurence: The number of the first page with an occurence of the word 
+*/
 typedef struct {
     const char *pdf_path;
     int num_occurences;
@@ -23,6 +35,12 @@ typedef struct {
 } Result;
 
 
+/*
+    Struct to store the data of a page
+    - page_number: The number of the page   
+    - match_found: If true, the page contains an occurence of the word
+    - num_occurences: The number of occurences of the word in the page
+*/
 typedef struct {
     int page_number;
     gboolean match_found;
@@ -30,8 +48,15 @@ typedef struct {
 } PageData;
 
 /*
- * Compares two PageData structs by page number
- * Returns a negativ if page_number of a is smaller than page_number of b
+    Compares two PageData structs by page number
+    
+    PARAMETERS:
+        - a     : is a pointer to the first PageData struct
+        - b     : is a pointer to the second PageData struct
+    RETURN:
+        - 0 if the page numbers are equal
+        - a negative value if the page number of the first struct is smaller than the page number of the second struct
+        - a positive value if the page number of the first struct is greater than the page number of the second struct
 */
 int compare_page_data(const void *a, const void *b) {
     const PageData *data_a = (const PageData *)a;
@@ -40,6 +65,17 @@ int compare_page_data(const void *a, const void *b) {
     return data_a->page_number - data_b->page_number;
 }
 
+
+/*
+    Searches for a word in a pdf file and returns the result of the search
+
+    PARAMETERS:
+        - pdf_path      : is the path of the pdf file
+        - parameters    : is a pointer to the parameters of the search
+    RETURN:
+        - a pointer to the result of the search
+        - NULL if the pdf file doesn't contain the word
+*/
 Result* searchInPdf(const char *pdf_path, Parameters *parameters) {
     PopplerDocument *doc;
     GError *error = NULL;
@@ -127,13 +163,13 @@ Result* searchInPdf(const char *pdf_path, Parameters *parameters) {
     result->first_page_with_occurence = matches[0].page_number;
 
     // Print the matched page numbers
-    printf("\033[1;31m%s\033[0m:", g_path_get_basename(pdf_path));      // Print the file name in red
+    printf("\033[1;31m%s\033[0m:", g_path_get_basename(pdf_path)); // Print the file name in red
     for (i = 0; i < num_matches; i++) {
         printf(" %d", matches[i].page_number);
-        if (matches[i].num_occurences > 1) {        // Print the number of occurences if it's greater than 1
+        if (matches[i].num_occurences > 1) { // Print the number of occurences if it's greater than 1
             printf("(x%d)" , matches[i].num_occurences);
         }
-        if (i < num_matches - 1) {         // Print a comma after the page number if it's not the last one
+        if (i < num_matches - 1) {  // Print a comma after the page number if it's not the last one
             printf(",");
         }
         result->num_occurences += matches[i].num_occurences;
@@ -145,15 +181,31 @@ Result* searchInPdf(const char *pdf_path, Parameters *parameters) {
 }
 
 /*
- * Compares two strings
- * Returns a negative value if a is smaller than b
+    Compares two strings
+    
+    PARAMETERS:
+        - a     : is a pointer to the first string
+        - b     : is a pointer to the second string
+    RETURN:
+        - a negative value if the first string is smaller than the second one
+        - 0 if the strings are equal
+        - a positive value if the first string is greater than the second one
  */
 int comparePaths(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
 }
 
 
-// Function to check if a file has a .pdf extension
+/*    
+    Function to check if a file has a .pdf extension
+
+    PARAMETERS:
+        - filename  : is the name of the file to check
+    
+    RETURN:
+        - 1 if the file has a .pdf extension
+        - 0 otherwise
+*/ 
 int isPDFFile(const char* filename) {
     const char* extension = strrchr(filename, '.');
     if (extension != NULL && strcmp(extension, ".pdf") == 0) {
@@ -162,6 +214,16 @@ int isPDFFile(const char* filename) {
     return 0;
 }
 
+/*
+    Searches for PDF files in a folder and its subfolders
+    Returns an array of paths to the PDF files
+
+    PARAMETERS:
+        - folderPath        : is the path to the folder to search in
+        - pdfPaths          : is a pointer to an array of strings that will contain the paths to the PDF files
+        - count             : is the number of PDF files found
+        - searchSubfolders  : indicates whether to search in subfolders
+*/
 void searchPDFFilesRecursive(const char* folderPath, char*** pdfPaths, int* count, bool searchSubfolders) {
     DIR* dir = opendir(folderPath);
     if (dir != NULL) {
@@ -192,6 +254,17 @@ void searchPDFFilesRecursive(const char* folderPath, char*** pdfPaths, int* coun
     }
 }
 
+/*
+    Returns an array of paths to all PDF files in the specified folder
+
+    PARAMETERS:
+        - folderPath        : is the path to the folder to search in
+        - count             : is a pointer to an integer that will contain the number of PDF files found
+        - searchSubfolders  : indicates whether to search in subfolders
+
+    RETURN:
+        - an array of paths to the PDF files
+*/
 char** listPDFFiles(const char* folderPath, int* count, bool searchSubfolders) {
     // Allocate memory for the array of paths
     char** pdfPaths = (char**)malloc(sizeof(char*));
@@ -208,7 +281,11 @@ char** listPDFFiles(const char* folderPath, int* count, bool searchSubfolders) {
 
 
 /*
-prints the usage of the program
+    prints the usage of the program
+
+    PARAMETERS:
+        - argv          : is the array of arguments
+        - exit_code     : is the exit code to return
 */
 void print_usage_and_exit(char *argv[], int exit_code) {
     printf("Usage: %s <word_to_search> [-s] [-r] [-h/--h]\n", argv[0]);
@@ -266,6 +343,7 @@ int main(int argc, char *argv[]) {
     ///////////////////////////////////////
     // search here and print the results //
     ///////////////////////////////////////
+
     Result *ret = NULL;
     // Print the paths to PDF files
     for (int i = 0; i < count; i++) {
@@ -284,6 +362,7 @@ int main(int argc, char *argv[]) {
     //////////////////////////////
     // exit if no matches found //
     //////////////////////////////
+
     if (ret == NULL) {
         // No matches found, free the memory and return
         printf("No matches found\n");
@@ -318,19 +397,31 @@ int main(int argc, char *argv[]) {
     } while (1); 
 
 
-    ///////////////////////////////////
-    // Open the PDF file with okular //
-    ///////////////////////////////////
+    ///////////////////////
+    // Open the PDF file //
+    ///////////////////////
 
-
-    char command[200];
-    sprintf(command, "okular \"%s\" --find=\"%s\" --page=%d &", ret->pdf_path, param.word_to_search, ret->first_page_with_occurence);
+    // try to open the file with okular
+    char command[300];
+    snprintf(command, sizeof(command),  "okular \"%s\" --find=\"%s\" --page=%d &", ret->pdf_path, param.word_to_search, ret->first_page_with_occurence);
     
     printf("Executing command: '%s'\n", command);
     
-    int result = system(command);
+    int result = system(command); // execute command
+
+    // Check if could be opened with okular
     if (result == -1) {
-        perror("Error executing command");
+        perror("Error opening PDF file with okular");
+        
+        printf("Opening with default program...\n");
+        snprintf(command, sizeof(command), "xdg-open %s", ret->pdf_path);
+
+        int result = system(command); // execute command
+        
+        // check if could be opened with default program
+        if (result == -1) { 
+            perror("Error opening PDF file with default program");
+        }
     };
 
 
