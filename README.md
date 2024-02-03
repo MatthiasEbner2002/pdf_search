@@ -39,6 +39,12 @@ Search for "example" in all PDF files in the current directory:
 pdfs example
 ```
 
+Search for "example of this" in all PDF files in the current directory:
+
+```bash
+pdfs "example of this"
+```
+
 Search for "example" in all PDF files in the current directory and subdirectories:
 
 ```bash
