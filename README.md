@@ -1,23 +1,58 @@
 # TO KNOW
 
 Dont move the files into a other location, there is a softlink to these files, into '/usr/local/bin/'. <br>
-So i can change the files if I want and dont have to change the links. 
+So i can change the files if I want and dont have to change the links.
 
-### Command to make a link:
-INFO: change /usr/local/bin/pdf_search to change the command, that you what to use (delete old ones) 
+### Command to make a link
 
-    sudo ln -s "$(pwd)/pdf_search" /usr/local/bin/pdf_search
+>[!TIP]
+change the *pdf_search* in */usr/local/bin/**pdf_search*** to a command name of your choice, for later use.
 
-###  Command to delete the link again:
-    sudo rm /usr/local/bin/pdf_search
+```bash
+sudo ln -s "$(pwd)/pdf_search" /usr/local/bin/pdf_search
+```
 
+### Command to delete the link again
 
-
-TODO: make it possible to have a strict search (case sensitive)
+```bash
+sudo rm /usr/local/bin/pdf_search
+```
 
 ## Usage
 
-    pdf_search <text to search for>
+```bash
+pdf_search <word_to_search> [-s] [-r] [-h/--help]
+```
 
-### example:
-    pdf_search adequate
+### Options
+
+- **<word_to_search>**: The word to search for within PDF files.
+- **-s**: Enable case-sensitive search.
+- **-r**: Recursively search subdirectories.
+- **-h/--help**: Display this usage information.
+
+## Example
+
+Search for "example" in all PDF files in the current directory:
+
+```bash
+pdfs example
+```
+
+Search for "example" in all PDF files in the current directory and subdirectories:
+
+```bash
+pdfs example -r
+```
+
+Search for "example" in all PDF files in the current directory with case sensitivity:
+
+```bash
+pdfs example -s
+```
+
+Search for "example" in all PDF files in the current directory and subdirectories, with case sensitivity:
+
+```bash
+pdfs example -s -r
+```
