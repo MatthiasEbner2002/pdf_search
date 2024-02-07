@@ -88,7 +88,7 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
         return NULL;
     }
 
-    PopplerDocument doc = poppler_document_new_from_file(file_uri, NULL, &error);
+    PopplerDocument *doc = poppler_document_new_from_file(file_uri, NULL, &error);
     if (error != NULL){
         fprintf(stderr, "Error opening PDF file: %s\n", error->message);
         g_error_free(error);
@@ -96,9 +96,9 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
         return NULL;
     }
 
-    PageData *matches = calloc(max_matches, sizeof(PageData));
     int max_matches = 100; // Maximum number of matches to store, for start only
     int num_matches = 0;
+    PageData *matches = calloc(max_matches, sizeof(PageData));
     int i;
     int num_pages = poppler_document_get_n_pages(doc);
     
@@ -381,20 +381,25 @@ int main(int argc, char *argv[]){
     ///////////////////////////////////////
     // search here and print the results //
     ///////////////////////////////////////
-
+    int total_number_occurences = 0;
     Result *ret = NULL;
     // Print the paths to PDF files
     for (int i = 0; i < count; i++){
+
         Result *result = search_in_pdf(pdfPaths[i], &param);
-        if (result != NULL && (ret == NULL || result->num_occurences > ret->num_occurences)){
-            // save the result if it has more occurences than the previous one
-            if (ret != NULL){
-                free(ret); // Free the previously allocated memory
+        if (result != NULL){
+            total_number_occurences += result->num_occurences;
+
+            if ((ret == NULL || result->num_occurences > ret->num_occurences)){
+                // save the result if it has more occurences than the previous one
+                if (ret != NULL){
+                    free(ret); // Free the previously allocated memory
+                }
+                ret = result;
             }
-            ret = result;
+            else
+                free(result);
         }
-        else
-            free(result);
     }
 
     // exit if no matches found 
@@ -405,7 +410,8 @@ int main(int argc, char *argv[]){
         free(pdfPaths);
         return 0;
     }
-    printf("Total occurences: %d\n", ret->num_occurences);
+    printf("Total occurences: %d\n", total_number_occurences);
+
     ////////////////////////////////////////////////////
     // Ask the user if they want to open the PDF file //
     ////////////////////////////////////////////////////
