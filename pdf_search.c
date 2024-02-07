@@ -183,6 +183,8 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
     result->pdf_path = pdf_path;
     result->first_page_with_occurence = matches[0].page_number;
     result->num_occurences = 0;
+
+    // Print the matches, PDF file name, page number and the line with the occurence
     if (parameters->print_lines_with_occurences == true){
         for (i = 0; i < num_matches; i++){
             for (int j = 0; j < matches[i].num_occurences; j++){
@@ -340,6 +342,7 @@ int main(int argc, char *argv[]){
     if (argc < 2 || argc > 5)
         print_usage_and_exit(argv, EXIT_FAILURE);
 
+    // Initialize the parameters of the search
     Parameters param = {
         .word_to_search = NULL,
         .sensitive_search = false,
@@ -347,6 +350,7 @@ int main(int argc, char *argv[]){
         .print_lines_with_occurences = false
     };
 
+    // Parse the command line arguments
     for (int i = 1; i < argc; i++){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
             print_usage_and_exit(argv, EXIT_SUCCESS);
