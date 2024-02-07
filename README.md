@@ -78,7 +78,7 @@ sudo rm /usr/local/bin/pdf_search
 ## 2. Usage
 
 ```bash
-pdf_search <word_to_search> [-s] [-r] [-h/--help]
+pdf_search <word_to_search> [-s] [-r] [-l] [-h/--help]
 ```
 
 ### 2.1. Options
@@ -86,6 +86,7 @@ pdf_search <word_to_search> [-s] [-r] [-h/--help]
 - **<word_to_search>**: The word to search for within PDF files.
 - **-s**: Enable case-sensitive search.
 - **-r**: Recursively search subdirectories.
+- **-l**: Print all the lines, with a occurence.
 - **-h/--help**: Display this usage information.
 
 ## 3. Example
@@ -118,4 +119,10 @@ Search for "example" in all PDF files in the current directory and subdirectorie
 
 ```bash
 pdfs example -s -r
+```
+
+Search for "example" in all PDF files in the current directory and print all lines with a occurence:
+
+```bash
+pdfs example -l
 ```

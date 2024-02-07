@@ -330,8 +330,16 @@ char **list_pdf_files(const char *folderPath, int *count, bool searchSubfolders)
         - argv          : is the array of arguments
         - exit_code     : is the exit code to return
 */
-void print_usage_and_exit(char *argv[], int exit_code){
-    printf("Usage: %s <word_to_search> [-s] [-r] [-h/--help]\n", argv[0]);
+void print_usage_and_exit(char *argv[], int exit_code, bool with_explanation){
+    printf("Usage: %s <word_to_search> [-s] [-r] [-l] [-h/--help]\n", argv[0]);
+    if(with_explanation){
+        printf("\n");
+        printf("<word_to_search>:\n\tThe word to search for within PDF files.\n");
+        printf("-s:\n\tEnable case-sensitive search.\n");
+        printf("-r:\n\tRecursively search subdirectories.\n");
+        printf("-l:\n\tPrint all the lines, with a occurence.\n");
+        printf("-h/--help:\n\tDisplay this usage information.\n");
+    }
     exit(exit_code);
 }
 
@@ -344,7 +352,7 @@ int main(int argc, char *argv[]){
     }
 
     if (argc < 2 || argc > 5)
-        print_usage_and_exit(argv, EXIT_FAILURE);
+        print_usage_and_exit(argv, EXIT_FAILURE, false);
 
     // Initialize the parameters of the search
     Parameters param = {
@@ -357,7 +365,7 @@ int main(int argc, char *argv[]){
     // Parse the command line arguments
     for (int i = 1; i < argc; i++){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
-            print_usage_and_exit(argv, EXIT_SUCCESS);
+            print_usage_and_exit(argv, EXIT_SUCCESS, true);
         else if (strcmp(argv[i], "-s") == 0)
             param.sensitive_search = true;
         else if (strcmp(argv[i], "-r") == 0)
@@ -367,12 +375,12 @@ int main(int argc, char *argv[]){
         else if (param.word_to_search == NULL)
             param.word_to_search = argv[i];
         else
-            print_usage_and_exit(argv, EXIT_FAILURE);
+            print_usage_and_exit(argv, EXIT_FAILURE, false);
     }
 
     if (param.word_to_search == NULL){
         printf("Error: no word to search\n");
-        print_usage_and_exit(argv, EXIT_FAILURE);
+        print_usage_and_exit(argv, EXIT_FAILURE, false);
     }
 
     int count;
