@@ -1,5 +1,7 @@
 # pds_search
 
+[![CodeQL](https://github.com/MatthiasEbner2002/pdf_search/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/MatthiasEbner2002/pdf_search/actions/workflows/codeql.yml)
+
 ## Table of content
 
 - [1. How to start](#1-how-to-start)
