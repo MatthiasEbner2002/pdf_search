@@ -327,8 +327,9 @@ char **list_pdf_files(const char *folderPath, int *count, bool searchSubfolders)
     prints the usage of the program
 
     PARAMETERS:
-        - argv          : is the array of arguments
-        - exit_code     : is the exit code to return
+        - argv              : is the array of arguments
+        - exit_code         : is the exit code to return
+        - with_explanation  : if true, print the explanation of the arguments
 */
 void print_usage_and_exit(char *argv[], int exit_code, bool with_explanation){
     printf("Usage: %s <word_to_search> [-s] [-r] [-l] [-h/--help]\n", argv[0]);
@@ -389,6 +390,7 @@ int main(int argc, char *argv[]){
     ///////////////////////////////////////
     // search here and print the results //
     ///////////////////////////////////////
+
     int total_number_occurences = 0;
     Result *ret = NULL;
     // Print the paths to PDF files
@@ -423,6 +425,7 @@ int main(int argc, char *argv[]){
     ////////////////////////////////////////////////////
     // Ask the user if they want to open the PDF file //
     ////////////////////////////////////////////////////
+
     char answer[10];
     do{
         printf("Open %s(%d)? ([Enter]y/n): ", g_path_get_basename(ret->pdf_path), ret->first_page_with_occurence);
