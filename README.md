@@ -24,9 +24,7 @@
 ```bash
 git clone https://github.com/MatthiasEbner2002/pdf_search.git
 cd pdf_search
-make
-chmod +x pdf_search
-sudo ln -s "$(pwd)/pdf_search" /usr/local/bin/pdf_search # change pdf_search to prefered command name
+./install.sh
 ```
 
 ### 1.2. Long Version
@@ -46,7 +44,7 @@ cd pdf_search
 #### 1.2.3. Compile
 
 ```bash
-make
+make  // this may throw an error that poppler-glib is missing you can install that yourself or run ./install_deps.sh
 ```
 
 >[!NOTE]
