@@ -80,144 +80,170 @@ int compare_page_data(const void *a, const void *b){
 */
 Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
 
+
     GError *error = NULL;
     gchar *file_uri = g_filename_to_uri(pdf_path, NULL, &error);
-    if (error != NULL){
+    if (error != NULL) {
         fprintf(stderr, "Error converting file path to URI: %s\n", error->message);
         g_error_free(error);
         return NULL;
     }
 
     PopplerDocument *doc = poppler_document_new_from_file(file_uri, NULL, &error);
-    if (error != NULL){
+    if (error != NULL) {
         fprintf(stderr, "Error opening PDF file: %s\n", error->message);
         g_error_free(error);
         g_free(file_uri);
         return NULL;
     }
 
-    int max_matches = 100; // Maximum number of matches to store, for start only
+    int max_matches = 100;
     int num_matches = 0;
+    int alloc_failed = 0;
     PageData *matches = calloc(max_matches, sizeof(PageData));
-    int i;
+    if (!matches) {
+        fprintf(stderr, "Memory allocation failed for matches array\n");
+        g_free(file_uri);
+        g_object_unref(doc);
+        return NULL;
+    }
     int num_pages = poppler_document_get_n_pages(doc);
-    
-    #pragma omp parallel for private(i) shared(num_matches) // num_threads(8)
-    for (i = 0; i < num_pages; i++){
+
+    #pragma omp parallel for
+    for (int i = 0; i < num_pages; i++) {
         PopplerPage *page = poppler_document_get_page(doc, i);
+        if (!page) continue;
         gchar *text = poppler_page_get_text(page);
-        gchar *word = parameters->word_to_search;
-        
-        if (parameters->sensitive_search == false){
-            // Convert the text and the word to lowercase if the search is case insensitive
-            text = g_ascii_strdown(text, -1);
-            word = g_ascii_strdown(word, -1);
+        if (!text) {
+            g_object_unref(page);
+            continue;
+        }
+
+        gchar *search_word = parameters->word_to_search;
+        gchar *text_to_search = text;
+        gchar *word_to_search = search_word;
+        if (!parameters->sensitive_search) {
+            text_to_search = g_ascii_strdown(text, -1);
+            word_to_search = g_ascii_strdown(search_word, -1);
         }
 
         char *lines_found[200];
-        gboolean local_match_found = false;
         int local_num_occurences = 0;
+        gboolean local_match_found = false;
 
-        // Search for the word in each line of the page
-        if (parameters->print_lines_with_occurences == true){
-            gchar **lines = g_strsplit(text, "\n", -1);
-            for (int j = 0; lines[j] != NULL; j++){
-                if (strstr(lines[j], word) != NULL){
-                    if (local_match_found == false)
-                        local_match_found = true;
+        if (parameters->print_lines_with_occurences) {
+            gchar **lines = g_strsplit(text_to_search, "\n", -1);
+            for (int j = 0; lines[j] != NULL; j++) {
+                if (strstr(lines[j], word_to_search) != NULL) {
+                    local_match_found = true;
                     lines_found[local_num_occurences] = lines[j];
                     local_num_occurences++;
                 }
             }
-        }
-
-        //seach for each occurence of the word in the page
-        else {
-            char *found_word = strstr(text, word);
-            while (found_word != NULL){
-                if (local_match_found == false)
-                    local_match_found = true;
-
+            g_strfreev(lines);
+        } else {
+            char *search_ptr = text_to_search;
+            while (search_ptr && (search_ptr = strstr(search_ptr, word_to_search)) != NULL) {
+                local_match_found = true;
                 local_num_occurences++;
-                text = g_strdup(found_word + strlen(word));
-                if (text == NULL)
-                    break;
-                found_word = strstr(text, word);
+                search_ptr += strlen(word_to_search);
             }
         }
 
-        if (local_match_found){
+        if (local_match_found) {
+            int local_alloc_failed = 0;
             #pragma omp critical
             {
-                // resize the matches array if needed
-                if (num_matches >= max_matches){
+                if (num_matches >= max_matches) {
                     max_matches *= 2;
-                    matches = realloc(matches, max_matches * sizeof(PageData));
-                }
-                matches[num_matches].page_number = i + 1;
-                matches[num_matches].num_occurences = local_num_occurences;
-
-                if (parameters->print_lines_with_occurences == true){
-                    // safe the lines in the matches array
-                    matches[num_matches].lines = malloc(local_num_occurences * sizeof(char *));
-                    for (int j = 0; j < local_num_occurences; j++){
-                        // TODO: check why the +1 is needed, for this to work
-                        matches[num_matches].lines[j] = malloc(1 + strlen(lines_found[j]) * sizeof(char));
-                        strcpy(matches[num_matches].lines[j], lines_found[j]);
+                    PageData *new_matches = realloc(matches, max_matches * sizeof(PageData));
+                    if (!new_matches) {
+                        fprintf(stderr, "Memory allocation failed during matches resize\n");
+                        alloc_failed = 1;
+                        local_alloc_failed = 1;
+                    } else {
+                        matches = new_matches;
                     }
                 }
-                num_matches++;
+                if (!local_alloc_failed) {
+                    matches[num_matches].page_number = i + 1;
+                    matches[num_matches].num_occurences = local_num_occurences;
+                    if (parameters->print_lines_with_occurences) {
+                        matches[num_matches].lines = malloc(local_num_occurences * sizeof(char *));
+                        for (int j = 0; j < local_num_occurences; j++) {
+                            size_t len = strlen(lines_found[j]);
+                            matches[num_matches].lines[j] = malloc((len + 1) * sizeof(char));
+                            strcpy(matches[num_matches].lines[j], lines_found[j]);
+                        }
+                    } else {
+                        matches[num_matches].lines = NULL;
+                    }
+                    num_matches++;
+                }
             }
         }
-    g_object_unref(page); 
-}
+
+        if (!parameters->sensitive_search) {
+            g_free(text_to_search);
+            g_free(word_to_search);
+        }
+        g_free(text);
+        g_object_unref(page);
+    }
 
     g_free(file_uri);
     g_object_unref(doc);
 
-    if (num_matches == 0){
+    if (num_matches == 0 || alloc_failed) {
         free(matches);
         return NULL;
     }
 
-    // Sort the matches by page number (big to small)
     qsort(matches, num_matches, sizeof(PageData), compare_page_data);
 
     Result *result = malloc(sizeof(Result));
+    if (!result) {
+        fprintf(stderr, "Memory allocation failed for result struct\n");
+        if (parameters->print_lines_with_occurences) {
+            for (int i = 0; i < num_matches; i++) {
+                for (int j = 0; j < matches[i].num_occurences; j++)
+                    free(matches[i].lines[j]);
+                free(matches[i].lines);
+            }
+        }
+        free(matches);
+        return NULL;
+    }
     result->pdf_path = pdf_path;
     result->first_page_with_occurence = matches[0].page_number;
     result->num_occurences = 0;
 
-    // Print the matches, PDF file name, page number and the line with the occurence and the number of occurences
-    if (parameters->print_lines_with_occurences == true){
-        for (i = 0; i < num_matches; i++){
-            for (int j = 0; j < matches[i].num_occurences; j++){
+    if (parameters->print_lines_with_occurences) {
+        for (int i = 0; i < num_matches; i++) {
+            for (int j = 0; j < matches[i].num_occurences; j++) {
                 printf("\033[1;31m%s\033[0m - \033[1;31m%d\033[0m: %s\n",
                     g_path_get_basename(pdf_path),
                     matches[i].page_number,
                     matches[i].lines[j]
                 );
-                result->num_occurences += 1;
+                result->num_occurences++;
             }
         }
-    }
-    else {
-        // Print the matched page numbers and sum up the occurences
-        printf("\033[1;31m%s\033[0m:", g_path_get_basename(pdf_path)); // Print the file name in red
-        for (i = 0; i < num_matches; i++){
+    } else {
+        printf("\033[1;31m%s\033[0m:", g_path_get_basename(pdf_path));
+        for (int i = 0; i < num_matches; i++) {
             printf(" %d", matches[i].page_number);
             if (matches[i].num_occurences > 1)
                 printf("(x%d)", matches[i].num_occurences);
-            if (i < num_matches - 1) 
+            if (i < num_matches - 1)
                 printf(",");
             result->num_occurences += matches[i].num_occurences;
         }
         printf("\n");
     }
 
-    // Free the memory used by the matches
-    if (parameters->print_lines_with_occurences == true){
-        for (int i = 0; i < num_matches; i++){
+    if (parameters->print_lines_with_occurences) {
+        for (int i = 0; i < num_matches; i++) {
             for (int j = 0; j < matches[i].num_occurences; j++)
                 free(matches[i].lines[j]);
             free(matches[i].lines);
