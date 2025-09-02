@@ -172,6 +172,11 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
                         matches[num_matches].lines = malloc(local_num_occurences * sizeof(char *));
                         for (int j = 0; j < local_num_occurences; j++) {
                             size_t len = strlen(lines_found[j]);
+                            // Allocate len+1 bytes: len for the string characters + 1 for null terminator
+                            // strlen() returns the number of characters WITHOUT the null terminator '\0'
+                            // strcpy() copies the string INCLUDING the null terminator
+                            // Without +1, strcpy would write beyond allocated memory causing buffer overflow
+                            // See issue #17: https://github.com/MatthiasEbner2002/pdf_search/issues/17
                             matches[num_matches].lines[j] = malloc((len + 1) * sizeof(char));
                             strcpy(matches[num_matches].lines[j], lines_found[j]);
                         }
