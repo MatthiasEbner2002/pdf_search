@@ -176,6 +176,7 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
                             // strlen() returns the number of characters WITHOUT the null terminator '\0'
                             // strcpy() copies the string INCLUDING the null terminator
                             // Without +1, strcpy would write beyond allocated memory causing buffer overflow
+                            // See issue #17: https://github.com/MatthiasEbner2002/pdf_search/issues/17
                             matches[num_matches].lines[j] = malloc((len + 1) * sizeof(char));
                             strcpy(matches[num_matches].lines[j], lines_found[j]);
                         }
