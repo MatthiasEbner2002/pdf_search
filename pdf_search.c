@@ -130,9 +130,10 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
         char *lines_found[200];
         int local_num_occurences = 0;
         gboolean local_match_found = false;
+        gchar **lines = NULL;
 
         if (parameters->print_lines_with_occurences) {
-            gchar **lines = g_strsplit(text_to_search, "\n", -1);
+            lines = g_strsplit(text_to_search, "\n", -1);
             for (int j = 0; lines[j] != NULL; j++) {
                 if (strstr(lines[j], word_to_search) != NULL) {
                     local_match_found = true;
@@ -140,7 +141,6 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
                     local_num_occurences++;
                 }
             }
-            g_strfreev(lines);
         } else {
             char *search_ptr = text_to_search;
             while (search_ptr && (search_ptr = strstr(search_ptr, word_to_search)) != NULL) {
@@ -188,6 +188,8 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
             }
         }
 
+        if (lines != NULL)
+            g_strfreev(lines);
         if (!parameters->sensitive_search) {
             g_free(text_to_search);
             g_free(word_to_search);
@@ -200,6 +202,13 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
     g_object_unref(doc);
 
     if (num_matches == 0 || alloc_failed) {
+        if (parameters->print_lines_with_occurences) {
+            for (int i = 0; i < num_matches; i++) {
+                for (int j = 0; j < matches[i].num_occurences; j++)
+                    free(matches[i].lines[j]);
+                free(matches[i].lines);
+            }
+        }
         free(matches);
         return NULL;
     }
@@ -224,18 +233,22 @@ Result *search_in_pdf(const char *pdf_path, Parameters *parameters){
     result->num_occurences = 0;
 
     if (parameters->print_lines_with_occurences) {
+        gchar *basename = g_path_get_basename(pdf_path);
         for (int i = 0; i < num_matches; i++) {
             for (int j = 0; j < matches[i].num_occurences; j++) {
                 printf("\033[1;31m%s\033[0m - \033[1;31m%d\033[0m: %s\n",
-                    g_path_get_basename(pdf_path),
+                    basename,
                     matches[i].page_number,
                     matches[i].lines[j]
                 );
                 result->num_occurences++;
             }
         }
+        g_free(basename);
     } else {
-        printf("\033[1;31m%s\033[0m:", g_path_get_basename(pdf_path));
+        gchar *basename = g_path_get_basename(pdf_path);
+        printf("\033[1;31m%s\033[0m:", basename);
+        g_free(basename);
         for (int i = 0; i < num_matches; i++) {
             printf(" %d", matches[i].page_number);
             if (matches[i].num_occurences > 1)
@@ -455,10 +468,16 @@ int main(int argc, char *argv[]){
     // Ask the user if they want to open the PDF file //
     ////////////////////////////////////////////////////
     char answer[10];
+    gchar *basename = g_path_get_basename(ret->pdf_path);
     do{
-        printf("Open %s(%d)? ([Enter]y/n): ", g_path_get_basename(ret->pdf_path), ret->first_page_with_occurence);
+        printf("Open %s(%d)? ([Enter]y/n): ", basename, ret->first_page_with_occurence);
         if (fgets(answer, sizeof(answer), stdin) == NULL){
             printf("Error reading input.\n");
+            g_free(basename);
+            free(ret);
+            for (int i = 0; i < count; i++)
+                free(pdfPaths[i]);
+            free(pdfPaths);
             return 1;
         }
 
@@ -467,9 +486,16 @@ int main(int argc, char *argv[]){
 
         if (strcmp(answer, "y") == 0 || strlen(answer) == 0)
             break;
-        else if (strcmp(answer, "n") == 0 || strcmp(answer, "N") == 0)
+        else if (strcmp(answer, "n") == 0 || strcmp(answer, "N") == 0) {
+            g_free(basename);
+            free(ret);
+            for (int i = 0; i < count; i++)
+                free(pdfPaths[i]);
+            free(pdfPaths);
             return 0;
+        }
     } while (1);
+    g_free(basename);
 
     ///////////////////////
     // Open the PDF file //
